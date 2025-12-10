@@ -17,7 +17,7 @@ jobs:
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag mysql-tool:latest
     - name: Save image
-      run: docker save mysql-tool:latest -o mysql-tool.tar
+      run: docker save mysql-tool:latest -o mysql-tool-latest.tar
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
