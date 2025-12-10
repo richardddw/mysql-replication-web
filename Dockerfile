@@ -17,5 +17,5 @@ COPY scripts ./scripts
 RUN chmod +x scripts/mysql_replication.sh
 
 EXPOSE 8000
-
+ENV MYSQL_SSL_MODE=PREFERRED
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
