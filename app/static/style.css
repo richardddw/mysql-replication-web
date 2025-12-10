@@ -295,3 +295,21 @@ a {
 a:hover {
   text-decoration: underline;
 }
+
+.notice {
+  margin: 0.6rem 0 0.8rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(22, 163, 74, 0.15);
+  border: 1px solid rgba(22, 163, 74, 0.7);
+  font-size: 0.85rem;
+}
+
+.notice.error {
+  background: rgba(185, 28, 28, 0.15);
+  border-color: rgba(220, 38, 38, 0.85);
+}
+
+.actions form {
+  margin: 0;
+}
