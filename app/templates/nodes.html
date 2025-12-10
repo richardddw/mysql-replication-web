@@ -1,0 +1,82 @@
+<!-- app/templates/nodes.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>新增数据库节点</h2>
+  <form method="post" action="/nodes" class="form-grid">
+    <label>
+      名称（用于展示）：
+      <input type="text" name="name" required placeholder="例如：A-生产库" />
+    </label>
+    <label>
+      主机 IP / 域名：
+      <input type="text" name="host" required placeholder="10.1.1.1" />
+    </label>
+    <label>
+      端口：
+      <input type="number" name="port" required value="3306" />
+    </label>
+    <label>
+      MySQL 用户：
+      <input type="text" name="user" required value="root" />
+    </label>
+    <label>
+      密码：
+      <input type="password" name="password" required />
+    </label>
+    <label>
+      server_id：
+      <input type="number" name="server_id" required placeholder="101" />
+    </label>
+    <label>
+      auto_increment_increment：
+      <input type="number" name="auto_increment_increment" value="2" />
+    </label>
+    <label>
+      auto_increment_offset：
+      <input type="number" name="auto_increment_offset" value="1" />
+    </label>
+
+    <div class="form-actions">
+      <button type="submit">保存节点</button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h2>已保存的节点</h2>
+  {% if nodes %}
+  <table>
+    <thead>
+    <tr>
+      <th>名称</th>
+      <th>地址</th>
+      <th>用户</th>
+      <th>server_id</th>
+      <th>自增策略</th>
+      <th>操作</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for n in nodes %}
+      <tr>
+        <td>{{ n.name }}</td>
+        <td>{{ n.host }}:{{ n.port }}</td>
+        <td>{{ n.user }}</td>
+        <td>{{ n.server_id }}</td>
+        <td>inc={{ n.auto_increment_increment }}, off={{ n.auto_increment_offset }}</td>
+        <td>
+          <form method="post" action="/nodes/{{ n.id }}/delete" onsubmit="return confirm('确定删除该节点？');">
+            <button type="submit" class="danger">删除</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>暂无节点，请先在上方添加至少两个节点。</p>
+  {% endif %}
+</section>
+{% endblock %}
