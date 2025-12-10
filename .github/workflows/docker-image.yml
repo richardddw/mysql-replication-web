@@ -15,13 +15,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag mysql-tool:$(date +%s)
+      run: docker build . --file Dockerfile --tag mysql-tool:latest
     - name: Save image
-      run: docker save mysql-tool:$(date +%s) -o mysql-tool-$(date +%s).tar
+      run: docker save mysql-tool:latest -o mysql-tool.tar
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: mysql-tool-$(date +%s)
-        path: mysql-tool-$(date +%s).tar
+        name: mysql-tool
+        path: mysql-tool-latest.tar
 
