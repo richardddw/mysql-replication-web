@@ -11,3 +11,5 @@ services:
       - ./data:/app/data
     # 如要在宿主机修改脚本，可再挂脚本目录：
     # - ./scripts:/app/scripts
+    environment:
+      - MYSQL_EXTRA_OPTS=--skip-ssl
