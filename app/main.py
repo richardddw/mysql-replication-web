@@ -178,8 +178,42 @@ async def nodes_page(request: Request):
             "request": request,
             "page": "nodes",
             "nodes": nodes,
+            "test_result": None,
         },
     )
+
+@app.post("/nodes/{node_id}/test", response_class=HTMLResponse)
+async def test_node_route(request: Request, node_id: str):
+    nodes = list_nodes()
+    node = get_node(node_id)
+
+    if node is None:
+        result = {
+            "ok": False,
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "未找到该节点。",
+            "node_id": node_id,
+            "node_name": None,
+        }
+    else:
+        r = test_node_connection(node)
+        result = {
+            **r,
+            "node_id": node_id,
+            "node_name": node.name,
+        }
+
+    return templates.TemplateResponse(
+        "nodes.html",
+        {
+            "request": request,
+            "page": "nodes",
+            "nodes": nodes,
+            "test_result": result,
+        },
+    )
+
 
 
 @app.post("/nodes", response_class=HTMLResponse)
