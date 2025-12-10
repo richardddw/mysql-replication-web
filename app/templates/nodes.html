@@ -4,6 +4,33 @@
 {% block content %}
 <section class="card">
   <h2>新增数据库节点</h2>
+    {% if test_result %}
+    <div class="notice {% if not test_result.ok %}error{% endif %}">
+      <div>
+        <strong>节点 {{ test_result.node_name or test_result.node_id }} 测试连接结果：</strong>
+        {% if test_result.ok %}
+          <span>✅ 连接成功（返回码 {{ test_result.returncode }}）</span>
+        {% else %}
+          <span>❌ 连接失败（返回码 {{ test_result.returncode }}）</span>
+        {% endif %}
+      </div>
+
+      {% if test_result.stdout %}
+        <div style="margin-top: 0.4rem;">
+          <div style="font-size: 0.8rem; color: #9ca3af;">标准输出：</div>
+          <pre>{{ test_result.stdout }}</pre>
+        </div>
+      {% endif %}
+
+      {% if test_result.stderr %}
+        <div style="margin-top: 0.4rem;">
+          <div style="font-size: 0.8rem; color: #9ca3af;">错误信息：</div>
+          <pre class="stderr">{{ test_result.stderr }}</pre>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
   <form method="post" action="/nodes" class="form-grid">
     <label>
       名称（用于展示）：
@@ -68,6 +95,9 @@
         <td>inc={{ n.auto_increment_increment }}, off={{ n.auto_increment_offset }}</td>
         <td>
           <div class="actions">
+            <form method="post" action="/nodes/{{ n.id }}/test">
+              <button type="submit" class="btn-small">测试连接</button>
+            </form>
             <a href="/nodes/{{ n.id }}/edit" class="btn-small">编辑</a>
             <form method="post" action="/nodes/{{ n.id }}/delete" onsubmit="return confirm('确定删除该节点？');">
               <button type="submit" class="danger btn-small">删除</button>
