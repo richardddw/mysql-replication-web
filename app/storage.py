@@ -52,3 +52,14 @@ def get_node(node_id: str) -> Optional[Node]:
         if n.id == node_id:
             return n
     return None
+
+def update_node(updated: Node) -> None:
+    """根据 id 更新节点"""
+    nodes = load_nodes()
+    new_nodes = []
+    for n in nodes:
+        if n.id == updated.id:
+            new_nodes.append(updated)
+        else:
+            new_nodes.append(n)
+    save_nodes(new_nodes)
