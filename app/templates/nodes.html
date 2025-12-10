@@ -67,11 +67,13 @@
         <td>{{ n.server_id }}</td>
         <td>inc={{ n.auto_increment_increment }}, off={{ n.auto_increment_offset }}</td>
         <td>
-          <form method="post" action="/nodes/{{ n.id }}/delete" onsubmit="return confirm('确定删除该节点？');">
-            <button type="submit" class="danger">删除</button>
-          </form>
+          <div class="actions">
+            <a href="/nodes/{{ n.id }}/edit" class="btn-small">编辑</a>
+            <form method="post" action="/nodes/{{ n.id }}/delete" onsubmit="return confirm('确定删除该节点？');">
+              <button type="submit" class="danger btn-small">删除</button>
+            </form>
+          </div>
         </td>
-      </tr>
     {% endfor %}
     </tbody>
   </table>
