@@ -10,8 +10,7 @@ from fastapi import FastAPI, Request, Form, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-
-from .storage import list_nodes, add_node, delete_node, get_node
+from .storage import list_nodes, add_node, delete_node, get_node, update_node
 from .schemas import Node
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -160,11 +159,60 @@ async def create_node(
     add_node(node)
     return RedirectResponse(url="/nodes", status_code=status.HTTP_303_SEE_OTHER)
 
+@app.get("/nodes/{node_id}/edit", response_class=HTMLResponse)
+async def edit_node_page(request: Request, node_id: str):
+    node = get_node(node_id)
+    if node is None:
+        # 节点不存在就跳回列表页
+        return RedirectResponse(url="/nodes", status_code=status.HTTP_303_SEE_OTHER)
+
+    return templates.TemplateResponse(
+        "node_edit.html",
+        {
+            "request": request,
+            "page": "nodes",
+            "node": node,
+        },
+    )
+
+@app.post("/nodes/{node_id}/edit", response_class=HTMLResponse)
+async def edit_node_submit(
+    request: Request,
+    node_id: str,
+    name: str = Form(...),
+    host: str = Form(...),
+    port: int = Form(...),
+    user: str = Form(...),
+    password: str = Form(...),
+    server_id: int = Form(...),
+    auto_increment_increment: int = Form(2),
+    auto_increment_offset: int = Form(1),
+):
+    existing = get_node(node_id)
+    if existing is None:
+        return RedirectResponse(url="/nodes", status_code=status.HTTP_303_SEE_OTHER)
+
+    updated = Node(
+        id=node_id,
+        name=name.strip(),
+        host=host.strip(),
+        port=port,
+        user=user.strip(),
+        password=password,
+        server_id=server_id,
+        auto_increment_increment=auto_increment_increment,
+        auto_increment_offset=auto_increment_offset,
+    )
+    update_node(updated)
+    return RedirectResponse(url="/nodes", status_code=status.HTTP_303_SEE_OTHER)
+
 
 @app.post("/nodes/{node_id}/delete")
 async def delete_node_route(node_id: str):
     delete_node(node_id)
     return RedirectResponse(url="/nodes", status_code=status.HTTP_303_SEE_OTHER)
+
+
 
 
 # ------------------- 主主复制页面 -------------------
