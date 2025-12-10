@@ -1,0 +1,30 @@
+<!-- app/templates/base.html -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>MySQL 主主 / 主从复制管理</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+</head>
+<body>
+<header>
+  <h1>MySQL 主主 / 主从复制管理</h1>
+  <nav>
+    <a href="/nodes" class="{% if page == 'nodes' %}active{% endif %}">数据库节点</a>
+    <a href="/replication/mm" class="{% if page == 'mm' %}active{% endif %}">主主复制</a>
+    <a href="/replication/ms" class="{% if page == 'ms' %}active{% endif %}">主从复制</a>
+  </nav>
+</header>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<footer>
+  <small>
+    实际复制逻辑由 <code>scripts/mysql_replication.sh</code> 完成；
+    所有数据库连接信息持久化到 <code>/app/data/nodes.json</code>（建议挂载到宿主机）。
+  </small>
+</footer>
+</body>
+</html>
