@@ -2,6 +2,7 @@
 from pathlib import Path
 import os
 import subprocess
+import shlex
 import shutil
 from uuid import uuid4
 from typing import Optional
@@ -123,7 +124,9 @@ def test_node_connection(node: Node) -> dict:
             "stderr": "容器内未安装 mysql 客户端（mysql 命令不存在）。",
         }
 
-    ssl_mode = os.environ.get("MYSQL_SSL_MODE", "PREFERRED")
+    # 与 Bash 脚本保持一致：支持 MYSQL_EXTRA_OPTS
+    extra = os.environ.get("MYSQL_EXTRA_OPTS", "")
+    extra_args = shlex.split(extra) if extra else []
 
     cmd = [
         "mysql",
@@ -133,7 +136,7 @@ def test_node_connection(node: Node) -> dict:
         f"--password={node.password}",
         "--batch",
         "--skip-column-names",
-        f"--ssl-mode={ssl_mode}",
+    ] + extra_args + [
         "-e",
         "SELECT 1;",
     ]
@@ -158,6 +161,7 @@ def test_node_connection(node: Node) -> dict:
             "stdout": "",
             "stderr": "测试连接超时（超过 30 秒），请检查网络与数据库状态。",
         }
+
 
 
 @app.get("/", response_class=HTMLResponse)
