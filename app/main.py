@@ -110,6 +110,55 @@ def run_replication_script(
             "stderr": "执行超时（超过 1 小时），请确认数据库网络与数据量情况。",
         }
 
+def test_node_connection(node: Node) -> dict:
+    """
+    调用 mysql 客户端执行 SELECT 1，用于测试单个节点连通性。
+    返回一个 dict，包含 ok/returncode/stdout/stderr。
+    """
+    if shutil.which("mysql") is None:
+        return {
+            "ok": False,
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "容器内未安装 mysql 客户端（mysql 命令不存在）。",
+        }
+
+    ssl_mode = os.environ.get("MYSQL_SSL_MODE", "PREFERRED")
+
+    cmd = [
+        "mysql",
+        f"--host={node.host}",
+        f"--port={node.port}",
+        f"--user={node.user}",
+        f"--password={node.password}",
+        "--batch",
+        "--skip-column-names",
+        f"--ssl-mode={ssl_mode}",
+        "-e",
+        "SELECT 1;",
+    ]
+
+    try:
+        completed = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        return {
+            "ok": completed.returncode == 0,
+            "returncode": completed.returncode,
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "ok": False,
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "测试连接超时（超过 30 秒），请检查网络与数据库状态。",
+        }
+
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
