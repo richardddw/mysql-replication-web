@@ -36,6 +36,11 @@ B_AUTO_INC_OFFSET="${B_AUTO_INC_OFFSET:-2}"
 REPL_USER="${REPL_USER:-repl}"
 REPL_PASS="${REPL_PASS:-PRVSawPFYmLB6NHwh6}"
 
+# --- SSL 选项 ---
+# MYSQL_SSL_MODE: DISABLED | PREFERRED | REQUIRED | VERIFY_CA | VERIFY_IDENTITY
+# 默认 PREFERRED：如果服务器支持 SSL 就加密，但不强制验证证书链
+MYSQL_SSL_MODE="${MYSQL_SSL_MODE:-PREFERRED}"
+
 # --- 危险操作开关 ---
 DANGEROUS_RESET_MASTER="${DANGEROUS_RESET_MASTER:-1}"
 ENABLE_SET_PERSIST="${ENABLE_SET_PERSIST:-1}"
@@ -55,7 +60,9 @@ MS_MASTER="${MS_MASTER:-}"
 mysql_exec() {
   local HOST=$1; local PORT=$2; local USER=$3; local PASS=$4; local SQL=$5
   mysql --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" \
-        --batch --skip-column-names -e "$SQL"
+        --batch --skip-column-names \
+        --ssl-mode="$MYSQL_SSL_MODE" \
+        -e "$SQL"
 }
 
 check_mysql() {
@@ -171,8 +178,11 @@ copy_user_databases() {
 
   mysqldump --host="$S_HOST" --port="$S_PORT" --user="$S_USER" --password="$S_PASS" \
     --single-transaction --quick --routines --events --triggers --set-gtid-purged=OFF \
+    --ssl-mode="$MYSQL_SSL_MODE" \
     --databases $DBS \
-  | mysql --host="$T_HOST" --port="$T_PORT" --user="$T_USER" --password="$T_PASS"
+  | mysql --host="$T_HOST" --port="$T_PORT" --user="$T_USER" --password="$T_PASS" \
+      --ssl-mode="$MYSQL_SSL_MODE"
+
 
   echo "   同步完成。"
 }
