@@ -1,0 +1,113 @@
+<!-- app/templates/replication_mm.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>主主复制配置</h2>
+
+  {% if not nodes or nodes|length < 2 %}
+    <p>至少需要先在“数据库节点”页面添加两个节点。</p>
+  {% else %}
+  <form method="post" action="/replication/mm" class="form-grid">
+    <label>
+      节点 A：
+      <select name="node_a_id" required>
+        {% for n in nodes %}
+          <option value="{{ n.id }}"
+            {% if selected_a and selected_a == n.id %}
+              selected
+            {% elif not selected_a and loop.index0 == 0 %}
+              selected
+            {% endif %}
+          >{{ n.name }} ({{ n.host }}:{{ n.port }})</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      节点 B：
+      <select name="node_b_id" required>
+        {% for n in nodes %}
+          <option value="{{ n.id }}"
+            {% if selected_b and selected_b == n.id %}
+              selected
+            {% elif not selected_b and loop.index0 == 1 %}
+              selected
+            {% endif %}
+          >{{ n.name }} ({{ n.host }}:{{ n.port }})</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <fieldset class="full">
+      <legend>数据保留策略（仅在“初始化/重置主主”时生效）</legend>
+      {% set strategy = data_strategy or 'keepA' %}
+      <label>
+        <input type="radio" name="data_strategy" value="keepA"
+          {% if strategy == 'keepA' %}checked{% endif %}>
+        保留 A 的数据，覆盖 B
+      </label>
+      <label>
+        <input type="radio" name="data_strategy" value="keepB"
+          {% if strategy == 'keepB' %}checked{% endif %}>
+        保留 B 的数据，覆盖 A
+      </label>
+      <label>
+        <input type="radio" name="data_strategy" value="clean"
+          {% if strategy == 'clean' %}checked{% endif %}>
+        两端全部清空（全新环境）
+      </label>
+    </fieldset>
+
+    <fieldset class="full">
+      <legend>高级选项</legend>
+      <label>
+        <input type="checkbox" name="dangerous_reset" checked>
+        DANGEROUS_RESET_MASTER（执行 <code>RESET BINARY LOGS AND GTIDS</code>，谨慎使用）
+      </label>
+      <label>
+        <input type="checkbox" name="enable_persist" checked>
+        ENABLE_SET_PERSIST（使用 <code>SET PERSIST</code> 持久化配置）
+      </label>
+    </fieldset>
+
+    <fieldset class="full">
+      <legend>复制账号（会在两个节点上创建/修改）</legend>
+      <label>
+        复制用户名：
+        <input type="text" name="repl_user" value="repl" required>
+      </label>
+      <label>
+        复制密码：
+        <input type="password" name="repl_pass" value="repl_password" required>
+      </label>
+    </fieldset>
+
+    <div class="form-actions full">
+      <button type="submit" name="action_button" value="setup">初始化/重置主主复制</button>
+      <button type="submit" name="action_button" value="status">查看主主状态</button>
+      <button type="submit" name="action_button" value="break" class="danger">
+        断开主主复制
+      </button>
+    </div>
+  </form>
+  {% endif %}
+</section>
+
+{% if result %}
+<section class="card">
+  <h2>执行结果</h2>
+  <p>退出码：<strong>{{ result.returncode }}</strong></p>
+
+  {% if result.stdout %}
+    <h3>标准输出</h3>
+    <pre>{{ result.stdout }}</pre>
+  {% endif %}
+
+  {% if result.stderr %}
+    <h3>标准错误</h3>
+    <pre class="stderr">{{ result.stderr }}</pre>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}
