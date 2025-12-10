@@ -1,0 +1,47 @@
+<!-- app/templates/node_edit.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>编辑数据库节点</h2>
+  <form method="post" action="/nodes/{{ node.id }}/edit" class="form-grid">
+    <label>
+      名称（用于展示）：
+      <input type="text" name="name" required value="{{ node.name }}" />
+    </label>
+    <label>
+      主机 IP / 域名：
+      <input type="text" name="host" required value="{{ node.host }}" />
+    </label>
+    <label>
+      端口：
+      <input type="number" name="port" required value="{{ node.port }}" />
+    </label>
+    <label>
+      MySQL 用户：
+      <input type="text" name="user" required value="{{ node.user }}" />
+    </label>
+    <label>
+      密码：
+      <input type="password" name="password" required value="{{ node.password }}" />
+    </label>
+    <label>
+      server_id：
+      <input type="number" name="server_id" required value="{{ node.server_id }}" />
+    </label>
+    <label>
+      auto_increment_increment：
+      <input type="number" name="auto_increment_increment" value="{{ node.auto_increment_increment }}" />
+    </label>
+    <label>
+      auto_increment_offset：
+      <input type="number" name="auto_increment_offset" value="{{ node.auto_increment_offset }}" />
+    </label>
+
+    <div class="form-actions full">
+      <button type="submit">保存修改</button>
+      <a href="/nodes" class="btn-small">返回列表</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
