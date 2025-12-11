@@ -203,16 +203,34 @@ show_mm_status() {
     set -- $tuple
     local N=$1; local H=$2; local P=$3; local U=$4; local Ps=$5
     echo ">> [$N] ($H:$P):"
+
     local out
-    out=$(mysql_exec "$H" "$P" "$U" "$Ps" "SHOW REPLICA STATUS\\G" || true)
+
+    # 不用 mysql_exec（因为里面有 --batch / --skip-column-names）
+    # 直接调用 mysql，保留 \G 竖排输出
+    out=$(mysql $MYSQL_EXTRA_OPTS \
+          --host="$H" --port="$P" --user="$U" --password="$Ps" \
+          -e "SHOW REPLICA STATUS\G" 2>/dev/null || true)
+
+    # 为兼容老版本，顺手尝试下 SHOW SLAVE STATUS（你现在可以没用到，不过加上不碍事）
     if [[ -z "$out" ]]; then
-      echo "   [Not Configured]"
+      out=$(mysql $MYSQL_EXTRA_OPTS \
+            --host="$H" --port="$P" --user="$U" --password="$Ps" \
+            -e "SHOW SLAVE STATUS\G" 2>/dev/null || true)
+    fi
+
+    if [[ -z "$out" ]]; then
+      echo "   [未检测到复制配置，或当前实例未配置为从库]"
     else
-      printf '%s\n' "$out" | egrep 'Replica_IO_Running:|Replica_SQL_Running:|Source_Host:|Seconds_Behind_Source:|Last_IO_Error:|Last_SQL_Error:' || true
+      # Replica_* / Slave_* / Source_* / Master_* 都兼容一下
+      printf '%s\n' "$out" | egrep \
+        'Replica_IO_Running:|Slave_IO_Running:|Replica_SQL_Running:|Slave_SQL_Running:|Source_Host:|Master_Host:|Seconds_Behind_Source:|Seconds_Behind_Master:|Last_IO_Error:|Last_SQL_Error:' \
+        || true
     fi
     echo
   done
 }
+
 
 break_mm_replication() {
   echo "=== 执行主主断开操作 (STOP & RESET REPLICA) ==="
@@ -232,11 +250,23 @@ show_ms_status() {
     set -- $tuple
     local N=$1; local H=$2; local P=$3; local U=$4; local Ps=$5
     local out
-    out=$(mysql_exec "$H" "$P" "$U" "$Ps" "SHOW REPLICA STATUS\\G" || true)
+
+    out=$(mysql $MYSQL_EXTRA_OPTS \
+          --host="$H" --port="$P" --user="$U" --password="$Ps" \
+          -e "SHOW REPLICA STATUS\G" 2>/dev/null || true)
+
+    if [[ -z "$out" ]]; then
+      out=$(mysql $MYSQL_EXTRA_OPTS \
+            --host="$H" --port="$P" --user="$U" --password="$Ps" \
+            -e "SHOW SLAVE STATUS\G" 2>/dev/null || true)
+    fi
+
     if [[ -n "$out" ]]; then
       any=1
       echo ">> [$N] 作为从库:"
-      printf '%s\n' "$out" | egrep 'Replica_IO_Running:|Replica_SQL_Running:|Source_Host:|Seconds_Behind_Source:|Last_IO_Error:|Last_SQL_Error:' || true
+      printf '%s\n' "$out" | egrep \
+        'Replica_IO_Running:|Slave_IO_Running:|Replica_SQL_Running:|Slave_SQL_Running:|Source_Host:|Master_Host:|Seconds_Behind_Source:|Seconds_Behind_Master:|Last_IO_Error:|Last_SQL_Error:' \
+        || true
       echo
     fi
   done
@@ -244,6 +274,7 @@ show_ms_status() {
     echo "   未在 A/B 上检测到任何复制配置。"
   fi
 }
+
 
 break_ms_replication() {
   echo "=== 执行主从断开操作 (STOP & RESET REPLICA) ==="
