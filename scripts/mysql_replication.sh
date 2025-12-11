@@ -199,37 +199,84 @@ copy_user_databases() {
 
 show_mm_status() {
   echo "=== 当前主主复制状态 ==="
-  for tuple in "A $A_HOST $A_PORT $A_ROOT_USER $A_ROOT_PASS" "B $B_HOST $B_PORT $B_ROOT_USER $B_ROOT_PASS"; do
-    set -- $tuple
-    local N=$1; local H=$2; local P=$3; local U=$4; local Ps=$5
-    echo ">> [$N] ($H:$P):"
 
-    local out
+  local outA outB
+  local any=0
 
-    # 不用 mysql_exec（因为里面有 --batch / --skip-column-names）
-    # 直接调用 mysql，保留 \G 竖排输出
-    out=$(mysql $MYSQL_EXTRA_OPTS \
-          --host="$H" --port="$P" --user="$U" --password="$Ps" \
-          -e "SHOW REPLICA STATUS\G" 2>/dev/null || true)
+  # -------- A 端状态 --------
+  outA=$(mysql $MYSQL_EXTRA_OPTS \
+        --host="$A_HOST" --port="$A_PORT" --user="$A_ROOT_USER" --password="$A_ROOT_PASS" \
+        -e "SHOW REPLICA STATUS\G" 2>/dev/null || true)
+  if [[ -z "$outA" ]]; then
+    outA=$(mysql $MYSQL_EXTRA_OPTS \
+          --host="$A_HOST" --port="$A_PORT" --user="$A_ROOT_USER" --password="$A_ROOT_PASS" \
+          -e "SHOW SLAVE STATUS\G" 2>/dev/null || true)
+  fi
 
-    # 为兼容老版本，顺手尝试下 SHOW SLAVE STATUS（你现在可以没用到，不过加上不碍事）
-    if [[ -z "$out" ]]; then
-      out=$(mysql $MYSQL_EXTRA_OPTS \
-            --host="$H" --port="$P" --user="$U" --password="$Ps" \
-            -e "SHOW SLAVE STATUS\G" 2>/dev/null || true)
-    fi
+  echo ">> [A] ($A_HOST:$A_PORT):"
+  if [[ -z "$outA" ]]; then
+    echo "   [未检测到复制配置，或当前实例未配置为从库]"
+  else
+    any=1
+    printf '%s\n' "$outA" | egrep \
+      'Replica_IO_Running:|Slave_IO_Running:|Replica_SQL_Running:|Slave_SQL_Running:|Source_Host:|Master_Host:|Source_Port:|Master_Port:|Seconds_Behind_Source:|Seconds_Behind_Master:|Last_IO_Error:|Last_SQL_Error:' \
+      || true
+  fi
+  echo
 
-    if [[ -z "$out" ]]; then
-      echo "   [未检测到复制配置，或当前实例未配置为从库]"
+  # -------- B 端状态 --------
+  outB=$(mysql $MYSQL_EXTRA_OPTS \
+        --host="$B_HOST" --port="$B_PORT" --user="$B_ROOT_USER" --password="$B_ROOT_PASS" \
+        -e "SHOW REPLICA STATUS\G" 2>/dev/null || true)
+  if [[ -z "$outB" ]]; then
+    outB=$(mysql $MYSQL_EXTRA_OPTS \
+          --host="$B_HOST" --port="$B_PORT" --user="$B_ROOT_USER" --password="$B_ROOT_PASS" \
+          -e "SHOW SLAVE STATUS\G" 2>/dev/null || true)
+  fi
+
+  echo ">> [B] ($B_HOST:$B_PORT):"
+  if [[ -z "$outB" ]]; then
+    echo "   [未检测到复制配置，或当前实例未配置为从库]"
+  else
+    any=1
+    printf '%s\n' "$outB" | egrep \
+      'Replica_IO_Running:|Slave_IO_Running:|Replica_SQL_Running:|Slave_SQL_Running:|Source_Host:|Master_Host:|Source_Port:|Master_Port:|Seconds_Behind_Source:|Seconds_Behind_Master:|Last_IO_Error:|Last_SQL_Error:' \
+      || true
+  fi
+  echo
+
+  # -------- 拓扑关系校验 --------
+  echo "=== 主主拓扑关系校验（基于当前 A/B 选择） ==="
+
+  if [[ "$any" -eq 0 ]]; then
+    echo "   ⚠ A / B 都没有作为从库的复制配置，当前并不是主主拓扑。"
+    return
+  fi
+
+  # 只有当两端都作为从库时，主主才算完整
+  if [[ -n "$outA" && -n "$outB" ]]; then
+    local A_src_host A_src_port B_src_host B_src_port
+
+    A_src_host=$(printf '%s\n' "$outA" | awk -F': ' '/Source_Host:|Master_Host:/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
+    A_src_port=$(printf '%s\n' "$outA" | awk -F': ' '/Source_Port:|Master_Port:/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
+
+    B_src_host=$(printf '%s\n' "$outB" | awk -F': ' '/Source_Host:|Master_Host:/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
+    B_src_port=$(printf '%s\n' "$outB" | awk -F': ' '/Source_Port:|Master_Port:/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
+
+    if [[ "$A_src_host" == "$B_HOST" && "$A_src_port" == "$B_PORT" \
+       && "$B_src_host" == "$A_HOST" && "$B_src_port" == "$A_PORT" ]]; then
+      echo "   ✅ 拓扑匹配：A <-> B 双向复制关系正确。"
     else
-      # Replica_* / Slave_* / Source_* / Master_* 都兼容一下
-      printf '%s\n' "$out" | egrep \
-        'Replica_IO_Running:|Slave_IO_Running:|Replica_SQL_Running:|Slave_SQL_Running:|Source_Host:|Master_Host:|Seconds_Behind_Source:|Seconds_Behind_Master:|Last_IO_Error:|Last_SQL_Error:' \
-        || true
+      echo "   ❌ 拓扑不匹配："
+      echo "      - A 当前上游: ${A_src_host:-<未配置>}:${A_src_port:-<未配置>}，期望: $B_HOST:$B_PORT"
+      echo "      - B 当前上游: ${B_src_host:-<未配置>}:${B_src_port:-<未配置>}，期望: $A_HOST:$A_PORT"
+      echo "   ⚠ 很可能你当前在页面上选择的 A/B 并不是同一组主主。"
     fi
-    echo
-  done
+  else
+    echo "   ⚠ 只有一端作为从库，另一端没有复制配置，当前并非完整的双向主主。"
+  fi
 }
+
 
 
 break_mm_replication() {
@@ -245,35 +292,90 @@ break_mm_replication() {
 
 show_ms_status() {
   echo "=== 当前主从复制状态 (自动探测从库) ==="
+
+  local outA outB
   local any=0
-  for tuple in "A $A_HOST $A_PORT $A_ROOT_USER $A_ROOT_PASS" "B $B_HOST $B_PORT $B_ROOT_USER $B_ROOT_PASS"; do
-    set -- $tuple
-    local N=$1; local H=$2; local P=$3; local U=$4; local Ps=$5
-    local out
 
-    out=$(mysql $MYSQL_EXTRA_OPTS \
-          --host="$H" --port="$P" --user="$U" --password="$Ps" \
-          -e "SHOW REPLICA STATUS\G" 2>/dev/null || true)
+  # -------- A 端作为从库的状态 --------
+  outA=$(mysql $MYSQL_EXTRA_OPTS \
+        --host="$A_HOST" --port="$A_PORT" --user="$A_ROOT_USER" --password="$A_ROOT_PASS" \
+        -e "SHOW REPLICA STATUS\G" 2>/dev/null || true)
+  if [[ -z "$outA" ]]; then
+    outA=$(mysql $MYSQL_EXTRA_OPTS \
+          --host="$A_HOST" --port="$A_PORT" --user="$A_ROOT_USER" --password="$A_ROOT_PASS" \
+          -e "SHOW SLAVE STATUS\G" 2>/dev/null || true)
+  fi
 
-    if [[ -z "$out" ]]; then
-      out=$(mysql $MYSQL_EXTRA_OPTS \
-            --host="$H" --port="$P" --user="$U" --password="$Ps" \
-            -e "SHOW SLAVE STATUS\G" 2>/dev/null || true)
-    fi
+  if [[ -n "$outA" ]]; then
+    any=1
+    echo ">> [A] 作为从库:"
+    printf '%s\n' "$outA" | egrep \
+      'Replica_IO_Running:|Slave_IO_Running:|Replica_SQL_Running:|Slave_SQL_Running:|Source_Host:|Master_Host:|Source_Port:|Master_Port:|Seconds_Behind_Source:|Seconds_Behind_Master:|Last_IO_Error:|Last_SQL_Error:' \
+      || true
+    echo
+  fi
 
-    if [[ -n "$out" ]]; then
-      any=1
-      echo ">> [$N] 作为从库:"
-      printf '%s\n' "$out" | egrep \
-        'Replica_IO_Running:|Slave_IO_Running:|Replica_SQL_Running:|Slave_SQL_Running:|Source_Host:|Master_Host:|Seconds_Behind_Source:|Seconds_Behind_Master:|Last_IO_Error:|Last_SQL_Error:' \
-        || true
-      echo
-    fi
-  done
+  # -------- B 端作为从库的状态 --------
+  outB=$(mysql $MYSQL_EXTRA_OPTS \
+        --host="$B_HOST" --port="$B_PORT" --user="$B_ROOT_USER" --password="$B_ROOT_PASS" \
+        -e "SHOW REPLICA STATUS\G" 2>/dev/null || true)
+  if [[ -z "$outB" ]]; then
+    outB=$(mysql $MYSQL_EXTRA_OPTS \
+          --host="$B_HOST" --port="$B_PORT" --user="$B_ROOT_USER" --password="$B_ROOT_PASS" \
+          -e "SHOW SLAVE STATUS\G" 2>/dev/null || true)
+  fi
+
+  if [[ -n "$outB" ]]; then
+    any=1
+    echo ">> [B] 作为从库:"
+    printf '%s\n' "$outB" | egrep \
+      'Replica_IO_Running:|Slave_IO_Running:|Replica_SQL_Running:|Slave_SQL_Running:|Source_Host:|Master_Host:|Source_Port:|Master_Port:|Seconds_Behind_Source:|Seconds_Behind_Master:|Last_IO_Error:|Last_SQL_Error:' \
+      || true
+    echo
+  fi
+
   if [[ "$any" -eq 0 ]]; then
     echo "   未在 A/B 上检测到任何复制配置。"
   fi
+
+  # -------- 拓扑关系校验 --------
+  echo "=== 主从拓扑关系校验（基于当前 A/B 选择） ==="
+
+  if [[ -n "$outA" && -z "$outB" ]]; then
+    # A 是从库，B 被视为主库候选
+    local A_src_host A_src_port
+    A_src_host=$(printf '%s\n' "$outA" | awk -F': ' '/Source_Host:|Master_Host:/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
+    A_src_port=$(printf '%s\n' "$outA" | awk -F': ' '/Source_Port:|Master_Port:/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
+
+    if [[ "$A_src_host" == "$B_HOST" && "$A_src_port" == "$B_PORT" ]]; then
+      echo "   ✅ 拓扑匹配：B 为主库，A 为从库（A->B）。"
+    else
+      echo "   ❌ 拓扑不匹配："
+      echo "      - A 当前上游: ${A_src_host:-<未配置>}:${A_src_port:-<未配置>}，期望: $B_HOST:$B_PORT"
+      echo "   ⚠ 你很可能把 A 和某个“其它主库的从库”配在了一起。"
+    fi
+
+  elif [[ -z "$outA" && -n "$outB" ]]; then
+    # B 是从库，A 被视为主库候选
+    local B_src_host B_src_port
+    B_src_host=$(printf '%s\n' "$outB" | awk -F': ' '/Source_Host:|Master_Host:/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
+    B_src_port=$(printf '%s\n' "$outB" | awk -F': ' '/Source_Port:|Master_Port:/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
+
+    if [[ "$B_src_host" == "$A_HOST" && "$B_src_port" == "$A_PORT" ]]; then
+      echo "   ✅ 拓扑匹配：A 为主库，B 为从库（B->A）。"
+    else
+      echo "   ❌ 拓扑不匹配："
+      echo "      - B 当前上游: ${B_src_host:-<未配置>}:${B_src_port:-<未配置>}，期望: $A_HOST:$A_PORT"
+      echo "   ⚠ 你很可能把 B 和某个“其它主库的从库”配在了一起。"
+    fi
+
+  elif [[ -n "$outA" && -n "$outB" ]]; then
+    echo "   ⚠ A 与 B 同时作为从库存在复制配置，当前 A/B 组合不是简单的单向主从。"
+  else
+    echo "   ⚠ A/B 均未配置为从库，当前并没有主从关系。"
+  fi
 }
+
 
 
 break_ms_replication() {
