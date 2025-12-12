@@ -229,7 +229,6 @@ async def logout(request: Request):
 async def index(request: Request):
     if not request.session.get("logged_in"):
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-    # 默认跳到主主复制页面
     return RedirectResponse(url="/replication/mm", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
 
