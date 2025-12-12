@@ -228,7 +228,7 @@ async def logout(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     if not request.session.get("logged_in"):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     # 默认跳到主主复制页面
     return RedirectResponse(url="/replication/mm", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
@@ -237,7 +237,7 @@ async def index(request: Request):
 @app.get("/nodes", response_class=HTMLResponse)
 async def nodes_page(request: Request):
     if not request.session.get("logged_in"):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     nodes = list_nodes()
     return templates.TemplateResponse(
         "nodes.html",
@@ -252,7 +252,7 @@ async def nodes_page(request: Request):
 @app.post("/nodes/{node_id}/test", response_class=HTMLResponse)
 async def test_node_route(request: Request, node_id: str):
     if not request.session.get("logged_in"):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     nodes = list_nodes()
     node = get_node(node_id)
@@ -299,7 +299,7 @@ async def create_node(
     auto_increment_offset: int = Form(1),
 ):
     if not request.session.get("logged_in"):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     node = Node(
         id=str(uuid4()),
@@ -318,7 +318,7 @@ async def create_node(
 @app.get("/nodes/{node_id}/edit", response_class=HTMLResponse)
 async def edit_node_page(request: Request, node_id: str):
     if not request.session.get("logged_in"):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     node = get_node(node_id)
     if node is None:
@@ -348,7 +348,7 @@ async def edit_node_submit(
     auto_increment_offset: int = Form(1),
 ):
     if not request.session.get("logged_in"):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     existing = get_node(node_id)
     if existing is None:
@@ -372,7 +372,7 @@ async def edit_node_submit(
 @app.post("/nodes/{node_id}/delete")
 async def delete_node_route(node_id: str):
     if not request.session.get("logged_in"):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     delete_node(node_id)
     return RedirectResponse(url="/nodes", status_code=status.HTTP_303_SEE_OTHER)
@@ -386,7 +386,7 @@ async def delete_node_route(node_id: str):
 @app.get("/replication/mm", response_class=HTMLResponse)
 async def replication_mm_page(request: Request):
     if not request.session.get("logged_in"):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     nodes = list_nodes()
     return templates.TemplateResponse(
@@ -413,7 +413,7 @@ async def replication_mm_action(
     action_button: str = Form("setup"),  # setup | status | break
 ):
     if not request.session.get("logged_in"):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     nodes = list_nodes()
     node_a = get_node(node_a_id)
@@ -457,7 +457,7 @@ async def replication_mm_action(
 @app.get("/replication/ms", response_class=HTMLResponse)
 async def replication_ms_page(request: Request):
     if not request.session.get("logged_in"):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     nodes = list_nodes()
     return templates.TemplateResponse(
@@ -484,7 +484,7 @@ async def replication_ms_action(
     action_button: str = Form("setup_ms"),  # setup_ms | status_ms | break_ms
 ):
     if not request.session.get("logged_in"):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     nodes = list_nodes()
     node_a = get_node(node_a_id)
