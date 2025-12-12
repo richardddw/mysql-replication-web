@@ -1,19 +1,33 @@
-<!-- app/templates/base.html -->
 <!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <title>MySQL 主主 / 主从复制管理</title>
+  <!-- 修复 HTTPS mixed content：直接用 /static 路径 -->
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <header>
-  <h1>MySQL 主主 / 主从复制管理</h1>
-  <nav>
-    <a href="/nodes" class="{% if page == 'nodes' %}active{% endif %}">数据库节点</a>
-    <a href="/replication/mm" class="{% if page == 'mm' %}active{% endif %}">主主复制</a>
-    <a href="/replication/ms" class="{% if page == 'ms' %}active{% endif %}">主从复制</a>
-  </nav>
+  <div class="header-inner">
+    <div>
+      <h1>MySQL 主主 / 主从复制管理</h1>
+      <nav>
+        <a href="/nodes" class="{% if page == 'nodes' %}active{% endif %}">数据库节点</a>
+        <a href="/replication/mm" class="{% if page == 'mm' %}active{% endif %}">主主复制</a>
+        <a href="/replication/ms" class="{% if page == 'ms' %}active{% endif %}">主从复制</a>
+      </nav>
+    </div>
+
+    <div class="user-info">
+      {% if request.session.get('logged_in') %}
+        <span>已登录：{{ request.app.state.app_username }}</span>
+        <span class="divider">|</span>
+        <a href="/logout">退出</a>
+      {% else %}
+        <a href="/login" class="{% if page == 'login' %}active{% endif %}">登录</a>
+      {% endif %}
+    </div>
+  </div>
 </header>
 
 <main>
