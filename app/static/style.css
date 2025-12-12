@@ -313,3 +313,53 @@ a:hover {
 .actions form {
   margin: 0;
 }
+
+/* 顶部右侧用户信息 */
+.header-inner,
+header-inner {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.user-info {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.user-info a {
+  color: var(--text-link);
+  text-decoration: none;
+}
+
+.user-info a:hover {
+  text-decoration: underline;
+}
+
+.user-info .divider {
+  color: #4b5563;
+}
+
+/* 登录页面居中 */
+.auth-wrapper {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-card {
+  max-width: 360px;
+  width: 100%;
+}
+
+.auth-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0;
+  margin-bottom: 0.9rem;
+}

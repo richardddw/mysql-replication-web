@@ -17,6 +17,7 @@ docker build -t mysql-replication-web .
 - Release 中包含直接可用的容器镜像，可配合docker-compose使用
 - 注意：数据库的登录信息，会以明文储存在容器挂载目录中，请务必保证该目录的权限安全
 - 建议自行部署，避免数据库登录信息泄密
+- 必需的环境变量：使用 `APP_USERNAME`,`APP_PASSWORD`,`SESSION_SECRET_KEY` 来定义管理账号
 
 #
 # Mysql-Replication-Web
@@ -38,5 +39,7 @@ docker build -t mysql-replication-web .
 - Prebuilt container images are available in the Release section and can be used with docker‑compose
 - Database credentials are stored in plaintext within the mounted data directory; ensure proper permission control
 - Self‑hosting is strongly recommended to avoid credential leakage
+- Use `APP_USERNAME`, `APP_PASSWORD`, and `SESSION_SECRET_KEY` to configure the administrator account
+
 
   

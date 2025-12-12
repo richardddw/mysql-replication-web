@@ -6,7 +6,7 @@ import shlex
 import shutil
 from uuid import uuid4
 from typing import Optional
-
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi import FastAPI, Request, Form, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +18,18 @@ BASE_DIR = Path(__file__).resolve().parent
 SCRIPT_PATH = BASE_DIR.parent / "scripts" / "mysql_replication.sh"
 
 app = FastAPI(title="MySQL 主主/主从复制管理 Web 工具")
+
+# ===== 登录相关配置（单用户） =====
+APP_USERNAME = os.environ.get("APP_USERNAME", "admin")
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "admin")
+
+SESSION_SECRET = os.environ.get("SESSION_SECRET_KEY", "change-me-please")
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
+
+# 用于在模板里显示用户名
+app.state.app_username = APP_USERNAME
+# ================================
+
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
@@ -162,19 +174,69 @@ def test_node_connection(node: Node) -> dict:
             "stderr": "测试连接超时（超过 30 秒），请检查网络与数据库状态。",
         }
 
+# ------------------- 节点管理 -------------------
+
+
+
+
+# ===== 登录页面 =====
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    # 已登录直接跳过去
+    if request.session.get("logged_in"):
+        return RedirectResponse(url="/nodes", status_code=status.HTTP_303_SEE_OTHER)
+
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+            "page": "login",
+            "error": None,
+        },
+    )
+
+
+@app.post("/login", response_class=HTMLResponse)
+async def login_submit(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    if username == APP_USERNAME and password == APP_PASSWORD:
+        request.session["logged_in"] = True
+        return RedirectResponse(url="/nodes", status_code=status.HTTP_303_SEE_OTHER)
+
+    # 登录失败，回到登录页并提示
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+            "page": "login",
+            "error": "用户名或密码错误",
+        },
+    )
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    # 默认跳到主主复制页面
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     return RedirectResponse(url="/replication/mm", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
-
-# ------------------- 节点管理 -------------------
 
 
 @app.get("/nodes", response_class=HTMLResponse)
 async def nodes_page(request: Request):
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     nodes = list_nodes()
     return templates.TemplateResponse(
         "nodes.html",
@@ -188,6 +250,9 @@ async def nodes_page(request: Request):
 
 @app.post("/nodes/{node_id}/test", response_class=HTMLResponse)
 async def test_node_route(request: Request, node_id: str):
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
     nodes = list_nodes()
     node = get_node(node_id)
 
@@ -232,6 +297,9 @@ async def create_node(
     auto_increment_increment: int = Form(2),
     auto_increment_offset: int = Form(1),
 ):
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
     node = Node(
         id=str(uuid4()),
         name=name.strip(),
@@ -248,6 +316,9 @@ async def create_node(
 
 @app.get("/nodes/{node_id}/edit", response_class=HTMLResponse)
 async def edit_node_page(request: Request, node_id: str):
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
     node = get_node(node_id)
     if node is None:
         # 节点不存在就跳回列表页
@@ -275,6 +346,9 @@ async def edit_node_submit(
     auto_increment_increment: int = Form(2),
     auto_increment_offset: int = Form(1),
 ):
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
     existing = get_node(node_id)
     if existing is None:
         return RedirectResponse(url="/nodes", status_code=status.HTTP_303_SEE_OTHER)
@@ -296,6 +370,9 @@ async def edit_node_submit(
 
 @app.post("/nodes/{node_id}/delete")
 async def delete_node_route(node_id: str):
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
     delete_node(node_id)
     return RedirectResponse(url="/nodes", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -307,6 +384,9 @@ async def delete_node_route(node_id: str):
 
 @app.get("/replication/mm", response_class=HTMLResponse)
 async def replication_mm_page(request: Request):
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
     nodes = list_nodes()
     return templates.TemplateResponse(
         "replication_mm.html",
@@ -331,6 +411,9 @@ async def replication_mm_action(
     repl_pass: str = Form("repl_password"),
     action_button: str = Form("setup"),  # setup | status | break
 ):
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
     nodes = list_nodes()
     node_a = get_node(node_a_id)
     node_b = get_node(node_b_id)
@@ -372,6 +455,9 @@ async def replication_mm_action(
 
 @app.get("/replication/ms", response_class=HTMLResponse)
 async def replication_ms_page(request: Request):
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
     nodes = list_nodes()
     return templates.TemplateResponse(
         "replication_ms.html",
@@ -396,6 +482,9 @@ async def replication_ms_action(
     repl_pass: str = Form("repl_password"),
     action_button: str = Form("setup_ms"),  # setup_ms | status_ms | break_ms
 ):
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
     nodes = list_nodes()
     node_a = get_node(node_a_id)
     node_b = get_node(node_b_id)

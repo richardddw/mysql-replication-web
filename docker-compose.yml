@@ -1,4 +1,3 @@
-version: "3.9"
 
 services:
   mysql-replication-web:
@@ -13,3 +12,6 @@ services:
     # - ./scripts:/app/scripts
     environment:
       - MYSQL_EXTRA_OPTS=--skip-ssl
+      - APP_USERNAME=admin
+      - APP_PASSWORD=super_safe_password
+      - SESSION_SECRET_KEY=random_keys
