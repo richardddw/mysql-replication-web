@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <section class="card auth-card">
+    <h2>登录</h2>
+    <p class="auth-subtitle">请输入管理账号以访问 MySQL 复制管理控制台</p>
+
+    {% if error %}
+      <div class="notice error" style="margin-bottom: 0.7rem;">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    <form method="post" action="/login" class="form-grid">
+      <label class="full">
+        用户名
+        <input type="text" name="username" required autocomplete="username">
+      </label>
+      <label class="full">
+        密码
+        <input type="password" name="password" required autocomplete="current-password">
+      </label>
+      <div class="form-actions full">
+        <button type="submit">登录</button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}
