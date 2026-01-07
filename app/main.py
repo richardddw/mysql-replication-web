@@ -369,7 +369,7 @@ async def edit_node_submit(
 
 
 @app.post("/nodes/{node_id}/delete")
-async def delete_node_route(node_id: str):
+async def delete_node_route(request: Request, node_id: str):
     if not request.session.get("logged_in"):
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
